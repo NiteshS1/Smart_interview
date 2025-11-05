@@ -50,9 +50,11 @@ export const createInterview = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    return await ctx.db.insert("interviews", {
+    const insertedId = await ctx.db.insert("interviews", {
       ...args,
     });
+
+    return insertedId;
   },
 });
 
@@ -66,5 +68,26 @@ export const updateInterviewStatus = mutation({
       status: args.status,
       ...(args.status === "completed" ? { endTime: Date.now() } : {}),
     });
+  },
+});
+
+export const getUpcomingInterviewsForReminder = query({
+  handler: async (ctx) => {
+    // No auth check - this is for cron/internal use
+    const now = Date.now();
+    const oneHourFromNow = now + 60 * 60 * 1000; // 1 hour in milliseconds
+    const fiftyFiveMinutesFromNow = now + 55 * 60 * 1000; // 55 minutes
+
+    const allInterviews = await ctx.db.query("interviews").collect();
+
+    const upcomingInterviews = allInterviews.filter((interview) => {
+      return (
+        interview.status === "upcoming" &&
+        interview.startTime >= fiftyFiveMinutesFromNow &&
+        interview.startTime <= oneHourFromNow
+      );
+    });
+
+    return upcomingInterviews;
   },
 });

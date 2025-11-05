@@ -34,6 +34,15 @@ export const getUsers = query({
   },
 });
 
+// Public query for cron/internal use (no auth required)
+export const getAllUsersForCron = query({
+  handler: async (ctx) => {
+    // No auth check - this is for cron/internal use
+    const users = await ctx.db.query("users").collect();
+    return users;
+  },
+});
+
 export const getUserByClerkId = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {

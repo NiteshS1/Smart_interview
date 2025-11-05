@@ -87,6 +87,40 @@ function InterviewScheduleUI() {
         interviewerIds,
       });
 
+      try {
+        const candidateUser = users.find((u) => u.clerkId === candidateId);
+        const interviewerUsers = users.filter((u) => interviewerIds.includes(u.clerkId));
+
+        const organizerName = user.fullName || user.primaryEmailAddress?.emailAddress || "Organizer";
+
+        if (candidateUser && interviewerUsers.length > 0) {
+          const res = await fetch("/api/send-interview-emails", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title,
+              startTime: meetingDate.getTime(),
+              candidate: { name: candidateUser.name, email: candidateUser.email },
+              interviewers: interviewerUsers.map((i) => ({ name: i.name, email: i.email })),
+              organizerName,
+            }),
+          });
+          if (!res.ok) {
+            let message = "Failed to send emails";
+            try {
+              const data = await res.json();
+              if (data?.message) message = data.message;
+              if (data?.error === "missing_env" && Array.isArray(data?.details)) {
+                message = `Missing env: ${data.details.join(", ")}`;
+              }
+            } catch {}
+            toast.error(message);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to send emails via API:", err);
+      }
+
       setOpen(false);
       toast.success("Meeting scheduled successfully!");
 
